@@ -1,5 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
 import BaseTemplate2 from './BaseTemplate2';
 import { calculateSubTotal, calculateTaxAmount, calculateGrandTotal } from '../../utils/invoiceCalculations';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -90,6 +91,13 @@ const Receipt2 = ({ data, isPrint = false }) => {
               <div>{notes}</div>
             </div>
           )}
+          <div className="flex justify-center mt-4">
+            <QRCodeSVG 
+              value={`Invoice: ${invoice.number || 'N/A'}, Total: ${formatCurrency(total, selectedCurrency)}, Date: ${invoice.date ? format(new Date(invoice.date), 'MM/dd/yyyy') : 'N/A'}`}
+              size={80}
+              level="M"
+            />
+          </div>
         </div>
         <div className="text-center mt-4">{footer || ""}</div>
       </div>

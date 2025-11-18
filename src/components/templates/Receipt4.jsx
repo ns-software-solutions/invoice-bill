@@ -1,4 +1,5 @@
 import React from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const Receipt4 = ({ data }) => {
   const { billTo, invoice, yourCompany, items, taxPercentage, footer, cashier, selectedCurrency } = data;
@@ -124,6 +125,13 @@ const Receipt4 = ({ data }) => {
         </table>
       </div>
       <hr className="my-4" />
+      <div className="flex justify-center mb-4">
+        <QRCodeSVG 
+          value={`Invoice: ${invoice.number}, Total: ${currencySymbol}${(items.reduce((sum, item) => sum + item.total, 0) * (1 + taxPercentage / 100)).toFixed(2)}, Date: ${invoice.date}`}
+          size={80}
+          level="M"
+        />
+      </div>
       <p className="text-center">{footer}</p>
     </div>
   );

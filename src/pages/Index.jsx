@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { formatCurrency } from '../utils/formatCurrency'; // Corrected import path
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import BillToSection from '../components/BillToSection';
@@ -9,6 +11,7 @@ import { templates } from "../utils/templateRegistry";
 import { FiEdit, FiFileText, FiTrash2 } from "react-icons/fi"; // Added FiTrash2 icon
 import { RefreshCw } from "lucide-react";
 import { set, sub } from "date-fns";
+import Navigation from '../components/Navigation';
 
 const generateRandomInvoiceNumber = () => {
   const length = Math.floor(Math.random() * 6) + 3;
@@ -66,6 +69,7 @@ const Index = () => {
     name: "",
     address: "",
     phone: "",
+    website: "",
   });
   const [items, setItems] = useState([]);
   const [taxPercentage, settaxPercentage] = useState(0);
@@ -90,7 +94,7 @@ const Index = () => {
         parsedData.invoice || { date: "", paymentDate: "", number: "" }
       );
       setYourCompany(
-        parsedData.yourCompany || { name: "", address: "", phone: "" }
+        parsedData.yourCompany || { name: "", address: "", phone: "", website: "" }
       );
       setItems(parsedData.items || []);
       settaxPercentage(parsedData.taxPercentage || 0);
@@ -200,7 +204,7 @@ const Index = () => {
     updateTotals();
   }, [items, taxPercentage]); // subTotal, taxAmount, grandTotal removed from deps as they are set by updateTotals & its chain
 
-  const handleTemplateClick = (templateNumber) => {
+  const handleTemplateClick = async (templateNumber) => {
     const formData = {
       billTo,
       shipTo,
@@ -212,8 +216,36 @@ const Index = () => {
       subTotal,
       grandTotal,
       notes,
-      selectedCurrency, // Add this
+      selectedCurrency,
     };
+
+    // Save invoice to database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('invoices').insert({
+          user_id: user.id,
+          invoice_number: invoice.number,
+          bill_to: billTo,
+          ship_to: shipTo,
+          invoice_details: invoice,
+          from_details: yourCompany,
+          items: items,
+          tax: taxPercentage,
+          subtotal: subTotal,
+          grand_total: grandTotal,
+          notes: notes,
+          template_name: `Template ${templateNumber}`,
+        });
+
+        if (error) throw error;
+        toast.success('Invoice saved successfully!');
+      }
+    } catch (error) {
+      toast.error('Failed to save invoice');
+      console.error(error);
+    }
+
     navigate("/template", {
       state: { formData, selectedTemplate: templateNumber },
     });
@@ -299,7 +331,7 @@ const Index = () => {
       paymentDate: "",
       number: generateRandomInvoiceNumber(),
     });
-    setYourCompany({ name: "", address: "", phone: "" });
+    setYourCompany({ name: "", address: "", phone: "", website: "" });
     setItems([{ name: "", description: "", quantity: 0, amount: 0, total: 0 }]);
     settaxPercentage(0);
     setNotes("");
@@ -307,7 +339,9 @@ const Index = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 relative">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8 relative">
       <h1 className="text-3xl font-bold mb-8 text-center">Bill Generator</h1>
       <div className="fixed top-4 left-4 flex gap-2">
         <button
@@ -411,14 +445,23 @@ const Index = () => {
                   name="phone"
                 />
               </div>
-              <FloatingLabelInput
-                id="yourCompanyAddress"
-                label="Address"
-                value={yourCompany.address}
-                onChange={handleInputChange(setYourCompany)}
-                name="address"
-                className="mt-4"
-              />
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                <FloatingLabelInput
+                  id="yourCompanyAddress"
+                  label="Address"
+                  value={yourCompany.address}
+                  onChange={handleInputChange(setYourCompany)}
+                  name="address"
+                />
+                <FloatingLabelInput
+                  id="yourCompanyWebsite"
+                  label="Website"
+                  value={yourCompany.website}
+                  onChange={handleInputChange(setYourCompany)}
+                  name="website"
+                  type="url"
+                />
+              </div>
             </div>
 
             <ItemDetails
@@ -509,6 +552,7 @@ const Index = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
