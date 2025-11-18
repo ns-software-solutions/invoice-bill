@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, RefreshCw, FileText, RotateCw } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Loader2, RefreshCw, FileText, RotateCw, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Receipt1 from "../components/templates/Receipt1";
 import Receipt2 from "../components/templates/Receipt2";
@@ -11,6 +13,7 @@ import { generateReceiptPDF } from "../utils/receiptPDFGenerator";
 import { generateGSTNumber } from "../utils/invoiceCalculations";
 import FloatingLabelInput from "../components/FloatingLabelInput";
 import ItemDetails from "../components/ItemDetails";
+import Navigation from '../components/Navigation';
 
 const generateRandomInvoiceNumber = () => {
   const length = Math.floor(Math.random() * 6) + 3;
@@ -68,6 +71,7 @@ const ReceiptPage = () => {
     address: "",
     phone: "",
     gst: "",
+    website: "",
   });
   const [cashier, setCashier] = useState("");
   const [items, setItems] = useState([
@@ -91,7 +95,7 @@ const ReceiptPage = () => {
       const parsedData = JSON.parse(savedFormData);
       setBillTo(parsedData.billTo || "");
       setInvoice(parsedData.invoice || { date: "", number: generateRandomInvoiceNumber() });
-      setYourCompany(parsedData.yourCompany || { name: "", address: "", phone: "", gst: "" });
+      setYourCompany(parsedData.yourCompany || { name: "", address: "", phone: "", gst: "", website: "" });
       setCashier(parsedData.cashier || "");
       setItems(parsedData.items || [{ name: "", description: "", quantity: 0, amount: 0, total: 0 }]);
       setTaxPercentage(parsedData.taxPercentage || 0);
@@ -124,7 +128,7 @@ const ReceiptPage = () => {
   const handleDownloadPDF = async () => {
     if (!isDownloading && receiptRef.current) {
       setIsDownloading(true);
-      const receiptData = { // Prepare receiptData object
+      const receiptData = {
         billTo,
         invoice,
         yourCompany,
@@ -137,12 +141,49 @@ const ReceiptPage = () => {
       };
       try {
         await generateReceiptPDF(receiptRef.current, theme, receiptData);
+        
+        // Save receipt to database
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const subTotal = calculateSubTotal(items);
+          const taxAmount = calculateTaxAmount(subTotal, taxPercentage);
+          const total = calculateGrandTotal(subTotal, taxAmount);
+          
+          const { error } = await supabase.from('invoices').insert({
+            user_id: user.id,
+            invoice_number: invoice.number,
+            bill_to: { name: billTo, email: '', address: '', phone: '' },
+            invoice_details: invoice,
+            from_details: yourCompany,
+            items: items,
+            tax: taxPercentage,
+            subtotal: subTotal,
+            grand_total: total,
+            notes: notes,
+            template_name: theme,
+          });
+
+          if (error) throw error;
+          toast.success('Receipt saved successfully!');
+        }
       } catch (error) {
         console.error("Error generating PDF:", error);
+        toast.error('Failed to save receipt');
       } finally {
         setIsDownloading(false);
       }
     }
+  };
+
+  const handleSendEmail = () => {
+    const subTotal = calculateSubTotal(items);
+    const taxAmount = calculateTaxAmount(subTotal, taxPercentage);
+    const total = calculateGrandTotal(subTotal, taxAmount);
+    
+    const subject = `Receipt ${invoice.number}`;
+    const body = `Dear Customer,\n\nPlease find your receipt details below:\n\nReceipt Number: ${invoice.number}\nDate: ${invoice.date}\nTotal: ${formatCurrency(total, selectedCurrency)}\n\n${notes}\n\nBest regards,\n${yourCompany.name}`;
+    
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const handleBack = () => {
@@ -191,7 +232,9 @@ const ReceiptPage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 relative">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8 relative">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Receipt Generator</h1>
         <div className="flex items-center">
@@ -501,6 +544,7 @@ const ReceiptPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

@@ -6,6 +6,10 @@ import { navItems } from "./nav-items";
 import TemplatePage from "./pages/TemplatePage";
 import ReceiptPage from "./pages/ReceiptPage";
 import Index from "./pages/Index";
+import AuthPage from "./pages/AuthPage";
+import BrandingSettings from "./pages/BrandingSettings";
+import InvoiceHistory from "./pages/InvoiceHistory";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -15,12 +19,15 @@ const App = () => (
       <Toaster />
       <BrowserRouter>
         <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/template" element={<ProtectedRoute><TemplatePage /></ProtectedRoute>} />
+          <Route path="/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />
+          <Route path="/branding" element={<ProtectedRoute><BrandingSettings /></ProtectedRoute>} />
+          <Route path="/invoice-history" element={<ProtectedRoute><InvoiceHistory /></ProtectedRoute>} />
           {navItems.map(({ to, page }) => (
-            <Route key={to} path={to} element={page} />
+            <Route key={to} path={to} element={<ProtectedRoute>{page}</ProtectedRoute>} />
           ))}
-          <Route path="/" element={<Index />} />
-          <Route path="/template" element={<TemplatePage />} />
-          <Route path="/receipt" element={<ReceiptPage />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
