@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_usage: {
+        Row: {
+          count: number | null
+          created_at: string | null
+          id: string
+          month: number
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          month: number
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          month?: number
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           bill_to: Json
@@ -56,6 +86,7 @@ export type Database = {
           items: Json
           notes: string | null
           ship_to: Json | null
+          status: string | null
           subtotal: number
           tax: number | null
           template_name: string | null
@@ -73,6 +104,7 @@ export type Database = {
           items: Json
           notes?: string | null
           ship_to?: Json | null
+          status?: string | null
           subtotal: number
           tax?: number | null
           template_name?: string | null
@@ -90,6 +122,7 @@ export type Database = {
           items?: Json
           notes?: string | null
           ship_to?: Json | null
+          status?: string | null
           subtotal?: number
           tax?: number | null
           template_name?: string | null
@@ -119,6 +152,86 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          billing_period: string
+          created_at: string | null
+          features: Json | null
+          id: string
+          invoice_limit: number | null
+          is_active: boolean | null
+          name: string
+          price: number
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_period: string
+          created_at?: string | null
+          features?: Json | null
+          id?: string
+          invoice_limit?: number | null
+          is_active?: boolean | null
+          name: string
+          price?: number
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string | null
+          features?: Json | null
+          id?: string
+          invoice_limit?: number | null
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscription_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          id: string
+          message: string | null
+          plan_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          plan_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          plan_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_requests_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -137,11 +250,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          plan_id: string
+          started_at: string | null
+          status: string
+          trial_ends_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          plan_id: string
+          started_at?: string | null
+          status: string
+          trial_ends_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          plan_id?: string
+          started_at?: string | null
+          status?: string
+          trial_ends_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      can_create_invoice: { Args: { user_id_param: string }; Returns: boolean }
+      check_subscription_status: {
+        Args: { user_id_param: string }
+        Returns: {
+          days_remaining: number
+          expires_at: string
+          has_active_subscription: boolean
+          is_trial: boolean
+          plan_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

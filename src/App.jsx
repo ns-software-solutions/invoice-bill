@@ -10,6 +10,9 @@ import AuthPage from "./pages/AuthPage";
 import BrandingSettings from "./pages/BrandingSettings";
 import InvoiceHistory from "./pages/InvoiceHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminDashboard from "./pages/AdminDashboard";
+import UserDashboard from "./pages/UserDashboard";
+import SubscriptionPage from "./pages/SubscriptionPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +23,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/template" element={<ProtectedRoute><TemplatePage /></ProtectedRoute>} />
           <Route path="/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />

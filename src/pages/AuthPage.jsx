@@ -18,7 +18,15 @@ const AuthPage = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/');
+        // Check if admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
+        
+        navigate(roleData ? '/admin' : '/dashboard');
       }
     };
     checkUser();
@@ -37,8 +45,16 @@ const AuthPage = () => {
 
         if (error) throw error;
 
+        // Check if user is admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .single();
+
         toast.success('Logged in successfully!');
-        navigate('/');
+        navigate(roleData ? '/admin' : '/dashboard');
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -50,8 +66,8 @@ const AuthPage = () => {
 
         if (error) throw error;
 
-        toast.success('Account created successfully!');
-        navigate('/');
+        toast.success('Account created successfully! You have been given a 7-day free trial.');
+        navigate('/dashboard');
       }
     } catch (error) {
       toast.error(error.message);
