@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { formatCurrency } from '../utils/formatCurrency'; // Corrected import path
+import { formatCurrency } from '../utils/formatCurrency';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import BillToSection from '../components/BillToSection';
 import ShipToSection from '../components/ShipToSection';
 import ItemDetails from "../components/ItemDetails";
 import { templates } from "../utils/templateRegistry";
-import { FiEdit, FiFileText, FiTrash2 } from "react-icons/fi"; // Added FiTrash2 icon
-import { RefreshCw } from "lucide-react";
+import { FiEdit, FiFileText, FiTrash2 } from "react-icons/fi";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import { set, sub } from "date-fns";
 import Navigation from '../components/Navigation';
+import { useSubscription } from '../hooks/useSubscription';
+import { Button } from '../components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 
 const generateRandomInvoiceNumber = () => {
   const length = Math.floor(Math.random() * 6) + 3;
@@ -77,6 +80,8 @@ const Index = () => {
   const [subTotal, setSubTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   const [notes, setNotes] = useState("");
+
+  const { subscription, usage, canCreateInvoice, incrementUsage, loading: subscriptionLoading } = useSubscription();
 
   const refreshNotes = () => {
     const randomIndex = Math.floor(Math.random() * noteOptions.length);
@@ -205,6 +210,18 @@ const Index = () => {
   }, [items, taxPercentage]); // subTotal, taxAmount, grandTotal removed from deps as they are set by updateTotals & its chain
 
   const handleTemplateClick = async (templateNumber) => {
+    // Check subscription before proceeding
+    if (!canCreateInvoice) {
+      if (subscription?.status === 'expired') {
+        toast.error('Your subscription has expired. Please renew to continue creating invoices.');
+        navigate('/subscription');
+        return;
+      }
+      toast.error(`You've reached your monthly limit of ${usage.limit} invoices. Upgrade to create more!`);
+      navigate('/subscription');
+      return;
+    }
+
     const formData = {
       billTo,
       shipTo,
@@ -236,14 +253,19 @@ const Index = () => {
           grand_total: grandTotal,
           notes: notes,
           template_name: `Template ${templateNumber}`,
+          status: 'unpaid',
         });
 
         if (error) throw error;
+        
+        // Increment usage after successful save
+        await incrementUsage();
         toast.success('Invoice saved successfully!');
       }
     } catch (error) {
       toast.error('Failed to save invoice');
       console.error(error);
+      return;
     }
 
     navigate("/template", {
@@ -342,6 +364,29 @@ const Index = () => {
     <>
       <Navigation />
       <div className="container mx-auto px-4 py-8 relative">
+      
+      {!subscriptionLoading && subscription && (
+        subscription.status === 'expired' ? (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Subscription Expired</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>Your subscription has expired. Please upgrade to continue.</span>
+              <Button variant="outline" size="sm" onClick={() => navigate('/subscription')}>Upgrade</Button>
+            </AlertDescription>
+          </Alert>
+        ) : !canCreateInvoice && usage.limit !== null && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Invoice Limit Reached</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>You've used all {usage.limit} invoices this month. Upgrade for unlimited!</span>
+              <Button variant="outline" size="sm" onClick={() => navigate('/subscription')}>View Plans</Button>
+            </AlertDescription>
+          </Alert>
+        )
+      )}
+      
       <h1 className="text-3xl font-bold mb-8 text-center">Bill Generator</h1>
       <div className="fixed top-4 left-4 flex gap-2">
         <button
